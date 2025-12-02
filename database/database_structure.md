@@ -41,6 +41,9 @@ Product catalog for the POS system
 | id            | BIGINT UNSIGNED | PRIMARY KEY, AUTO_INCREMENT                               |
 | name          | VARCHAR(255)    | NOT NULL                                                  |
 | sku           | VARCHAR(255)    | NOT NULL, UNIQUE (partial index where deleted_at IS NULL) |
+| price         | DECIMAL(15,2)   | NOT NULL, DEFAULT 0.00                                    |
+| description   | TEXT            | NULLABLE (rich text / HTML)                               |
+| image         | VARCHAR(255)    | NULLABLE (path to stored product image on public disk)    |
 | current_stock | INT             | NOT NULL, DEFAULT 0                                       |
 | total_sold    | INT             | NOT NULL, DEFAULT 0                                       |
 | created_at    | TIMESTAMP       | NULLABLE                                                  |

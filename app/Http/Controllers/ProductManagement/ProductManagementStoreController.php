@@ -7,6 +7,7 @@ use App\Http\Requests\ProductManagement\ProductManagementStoreRequest;
 use App\Models\Product;
 use App\Models\StockHistory;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 
 class ProductManagementStoreController extends Controller
 {
@@ -20,7 +21,17 @@ class ProductManagementStoreController extends Controller
                 'name' => $request->name,
                 'sku' => $request->sku ?: null, // Will auto-generate if null
                 'current_stock' => $request->starting_stock ?: 0,
+                'price' => $request->price,
+                'description' => $request->description ?: null,
+                'image' => null,
             ]);
+
+            // Handle image upload if provided
+            if ($request->hasFile('image')) {
+                $path = $request->file('image')->store('products', 'public');
+                $product->image = $path;
+                $product->save();
+            }
 
             // Create stock history if starting stock > 0
             if ($request->starting_stock && $request->starting_stock > 0) {

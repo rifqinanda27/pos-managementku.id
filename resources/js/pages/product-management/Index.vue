@@ -37,6 +37,7 @@ interface Product {
     sku: string;
     current_stock: number;
     total_sold: number;
+    price?: number;
 }
 
 interface Props {
@@ -121,6 +122,7 @@ const deleteProduct = () => {
                         <TableRow>
                             <TableHead>Name</TableHead>
                             <TableHead>SKU</TableHead>
+                            <TableHead>Price</TableHead>
                             <TableHead>Current Stock</TableHead>
                             <TableHead>Total Sold</TableHead>
                             <TableHead class="text-right">Actions</TableHead>
@@ -133,6 +135,7 @@ const deleteProduct = () => {
                         >
                             <TableCell>{{ product.name }}</TableCell>
                             <TableCell>{{ product.sku }}</TableCell>
+                            <TableCell>{{ product.price ?? 0 }}</TableCell>
                             <TableCell>{{ product.current_stock }}</TableCell>
                             <TableCell>{{ product.total_sold }}</TableCell>
                             <TableCell class="text-right">

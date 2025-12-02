@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router, useForm } from '@inertiajs/vue3';
@@ -13,11 +14,40 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Create Product', href: '/product-management/create' },
 ];
 
-const form = useForm({
+interface FormData {
+    name: string;
+    sku: string;
+    starting_stock: number;
+    price: number;
+    description: string;
+    image: File | null;
+}
+
+const form = useForm<FormData>({
     name: '',
     sku: '',
     starting_stock: 0,
+    price: 0.0,
+    description: '',
+    image: null,
 });
+
+import { ref } from 'vue';
+
+const preview = ref<string | null>(null);
+
+const onFileChange = (e: Event) => {
+    const input = e.target as HTMLInputElement;
+    const file = input.files?.[0] ?? null;
+    form.image = file;
+    if (file) {
+        preview.value = URL.createObjectURL(file);
+    } else {
+        preview.value = null;
+    }
+};
+
+// simple numeric input for price and textarea for description
 
 const submit = () => {
     form.post('/product-management');
@@ -83,6 +113,60 @@ const goBack = () => {
                                 class="text-sm text-red-600"
                             >
                                 {{ form.errors.starting_stock }}
+                            </p>
+                        </div>
+
+                        <div class="space-y-2">
+                            <Label for="price">Price</Label>
+                            <Input
+                                id="price"
+                                v-model.number="form.price"
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                required
+                            />
+                            <p
+                                v-if="form.errors.price"
+                                class="text-sm text-red-600"
+                            >
+                                {{ form.errors.price }}
+                            </p>
+                        </div>
+
+                        <div class="space-y-2">
+                            <Label for="description">Description</Label>
+                            <Textarea
+                                id="description"
+                                v-model="form.description"
+                            />
+                            <p
+                                v-if="form.errors.description"
+                                class="text-sm text-red-600"
+                            >
+                                {{ form.errors.description }}
+                            </p>
+                        </div>
+
+                        <div class="space-y-2">
+                            <Label for="image">Image</Label>
+                            <input
+                                id="image"
+                                type="file"
+                                accept="image/*"
+                                @change="onFileChange"
+                            />
+                            <div v-if="preview" class="mt-2">
+                                <img
+                                    :src="preview"
+                                    class="h-32 w-40 rounded-md object-cover"
+                                />
+                            </div>
+                            <p
+                                v-if="form.errors.image"
+                                class="text-sm text-red-600"
+                            >
+                                {{ form.errors.image }}
                             </p>
                         </div>
 

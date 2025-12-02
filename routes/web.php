@@ -13,6 +13,8 @@ use App\Http\Controllers\StockManagement\StockManagementUpdateStockController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
+use App\Http\Controllers\Pos\PosTerminalController;
+use App\Http\Controllers\Pos\CartController;
 
 Route::get('/', function () {
     return Inertia::render('Welcome', [
@@ -29,6 +31,19 @@ Route::get('dashboard', function () {
 Route::get('pos', function () {
     return Inertia::render('Pos');
 })->middleware(['auth', 'verified', 'role:cashier'])->name('pos');
+
+// POS Terminal - accessible by super-admin, admin, cashier
+Route::prefix('pos-terminal')->name('pos-terminal.')->middleware(['auth', 'verified', 'role:super-admin,admin,cashier'])->group(function () {
+    Route::get('/', [PosTerminalController::class, 'index'])->name('index');
+    Route::post('/add-to-cart', [PosTerminalController::class, 'addToCart'])->name('add-to-cart');
+    Route::post('/checkout', [PosTerminalController::class, 'checkoutSingle'])->name('checkout-single');
+
+    Route::get('/{user}/cart', [CartController::class, 'show'])->name('cart.show');
+    Route::put('/{user}/cart/{cartItem}', [CartController::class, 'update'])->name('cart.update');
+    Route::delete('/{user}/cart/{cartItem}', [CartController::class, 'destroy'])->name('cart.destroy');
+    Route::post('/{user}/cart/checkout', [CartController::class, 'checkout'])->name('cart.checkout');
+    Route::delete('/{user}/cart/clear', [CartController::class, 'clear'])->name('cart.clear');
+});
 
 // User Management - accessible by super-admin and admin
 Route::prefix('user-management')->name('user-management.')->middleware(['auth', 'verified', 'role:super-admin,admin'])->group(function () {
