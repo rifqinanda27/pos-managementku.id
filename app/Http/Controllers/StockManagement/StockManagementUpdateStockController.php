@@ -1,0 +1,64 @@
+<?php
+
+namespace App\Http\Controllers\StockManagement;
+
+use App\Http\Controllers\Controller;
+use App\Http\Requests\StockManagement\StockManagementUpdateStockRequest;
+use App\Models\Product;
+use App\Models\StockHistory;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+
+class StockManagementUpdateStockController extends Controller
+{
+    /**
+     * Update product stock.
+     */
+    public function __invoke(StockManagementUpdateStockRequest $request)
+    {
+        try {
+            DB::beginTransaction();
+
+            $product = Product::findOrFail($request->product);
+            $quantity = $request->update_stock;
+
+            // Update product stock based on type
+            if ($request->type === 'increase') {
+                $product->current_stock += $quantity;
+            } else {
+                // Ensure we don't go negative
+                if ($product->current_stock < $quantity) {
+                    return redirect()
+                        ->back()
+                        ->withInput()
+                        ->with('error', 'Insufficient stock. Current stock: ' . $product->current_stock);
+                }
+                $product->current_stock -= $quantity;
+            }
+
+            $product->save();
+
+            // Create stock history
+            StockHistory::create([
+                'product_id' => $product->id,
+                'user_id' => Auth::id(),
+                'type' => $request->type,
+                'quantity' => $quantity,
+                'notes' => $request->notes,
+            ]);
+
+            DB::commit();
+
+            return redirect()
+                ->route('stock-management.index')
+                ->with('success', 'Stock updated successfully.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return redirect()
+                ->back()
+                ->withInput()
+                ->with('error', 'Failed to update stock: ' . $e->getMessage());
+        }
+    }
+}

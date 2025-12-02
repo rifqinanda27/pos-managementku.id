@@ -1,5 +1,15 @@
 <?php
 
+use App\Http\Controllers\UserManagement\UserManagementViewController;
+use App\Http\Controllers\UserManagement\UserManagementStoreController;
+use App\Http\Controllers\UserManagement\UserManagementUpdateController;
+use App\Http\Controllers\UserManagement\UserManagementDeleteController;
+use App\Http\Controllers\ProductManagement\ProductManagementViewController;
+use App\Http\Controllers\ProductManagement\ProductManagementStoreController;
+use App\Http\Controllers\ProductManagement\ProductManagementUpdateController;
+use App\Http\Controllers\ProductManagement\ProductManagementDeleteController;
+use App\Http\Controllers\StockManagement\StockManagementViewController;
+use App\Http\Controllers\StockManagement\StockManagementUpdateStockController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
@@ -10,8 +20,41 @@ Route::get('/', function () {
     ]);
 })->name('home');
 
+// Dashboard - accessible by super-admin and admin
 Route::get('dashboard', function () {
     return Inertia::render('Dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
+})->middleware(['auth', 'verified', 'role:super-admin,admin'])->name('dashboard');
 
-require __DIR__.'/settings.php';
+// POS - accessible by cashier
+Route::get('pos', function () {
+    return Inertia::render('Pos');
+})->middleware(['auth', 'verified', 'role:cashier'])->name('pos');
+
+// User Management - accessible by super-admin and admin
+Route::prefix('user-management')->name('user-management.')->middleware(['auth', 'verified', 'role:super-admin,admin'])->group(function () {
+    Route::get('/', [UserManagementViewController::class, 'index'])->name('index');
+    Route::get('/create', [UserManagementViewController::class, 'create'])->name('create');
+    Route::post('/', UserManagementStoreController::class)->name('store');
+    Route::get('/{user}/edit', [UserManagementViewController::class, 'edit'])->name('edit');
+    Route::put('/{user}', UserManagementUpdateController::class)->name('update');
+    Route::delete('/{user}', UserManagementDeleteController::class)->name('destroy');
+});
+
+// Product Management - accessible by super-admin and admin
+Route::prefix('product-management')->name('product-management.')->middleware(['auth', 'verified', 'role:super-admin,admin'])->group(function () {
+    Route::get('/', [ProductManagementViewController::class, 'index'])->name('index');
+    Route::get('/create', [ProductManagementViewController::class, 'create'])->name('create');
+    Route::post('/', ProductManagementStoreController::class)->name('store');
+    Route::get('/{product}/edit', [ProductManagementViewController::class, 'edit'])->name('edit');
+    Route::put('/{product}', ProductManagementUpdateController::class)->name('update');
+    Route::delete('/{product}', ProductManagementDeleteController::class)->name('destroy');
+});
+
+// Stock Management - accessible by super-admin and admin
+Route::prefix('stock-management')->name('stock-management.')->middleware(['auth', 'verified', 'role:super-admin,admin'])->group(function () {
+    Route::get('/', [StockManagementViewController::class, 'index'])->name('index');
+    Route::get('/update-stock', [StockManagementViewController::class, 'updateStock'])->name('update-stock');
+    Route::post('/update-stock', StockManagementUpdateStockController::class)->name('update-stock.store');
+});
+
+require __DIR__ . '/settings.php';

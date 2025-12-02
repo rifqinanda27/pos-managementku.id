@@ -13,30 +13,61 @@ import {
 } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes';
 import { type NavItem } from '@/types';
-import { Link } from '@inertiajs/vue3';
-import { BookOpen, Folder, LayoutGrid } from 'lucide-vue-next';
+import { Link, usePage } from '@inertiajs/vue3';
+import { History, LayoutGrid, Package, Users } from 'lucide-vue-next';
+import { computed } from 'vue';
 import AppLogo from './AppLogo.vue';
 
-const mainNavItems: NavItem[] = [
-    {
-        title: 'Dashboard',
-        href: dashboard(),
-        icon: LayoutGrid,
-    },
-];
+const page = usePage();
+const user = computed(() => page.props.auth?.user);
 
-const footerNavItems: NavItem[] = [
-    {
-        title: 'Github Repo',
-        href: 'https://github.com/laravel/vue-starter-kit',
-        icon: Folder,
-    },
-    {
-        title: 'Documentation',
-        href: 'https://laravel.com/docs/starter-kits#vue',
-        icon: BookOpen,
-    },
-];
+// Main navigation items based on user role
+const mainNavItems = computed<NavItem[]>(() => {
+    const items: NavItem[] = [];
+
+    // Dashboard - for super-admin and admin
+    if (user.value?.role === 'super-admin' || user.value?.role === 'admin') {
+        items.push({
+            title: 'Dashboard',
+            href: dashboard(),
+            icon: LayoutGrid,
+        });
+
+        // User Management - for super-admin and admin
+        items.push({
+            title: 'User Management',
+            href: '/user-management',
+            icon: Users,
+        });
+
+        // Product Management - for super-admin and admin
+        items.push({
+            title: 'Product Management',
+            href: '/product-management',
+            icon: Package,
+        });
+
+        // Stock Management - for super-admin and admin
+        items.push({
+            title: 'Stock Management',
+            href: '/stock-management',
+            icon: History,
+        });
+    }
+
+    // POS - for cashier
+    if (user.value?.role === 'cashier') {
+        items.push({
+            title: 'POS Terminal',
+            href: '/pos',
+            icon: LayoutGrid,
+        });
+    }
+
+    return items;
+});
+
+const footerNavItems: NavItem[] = [];
 </script>
 
 <template>
