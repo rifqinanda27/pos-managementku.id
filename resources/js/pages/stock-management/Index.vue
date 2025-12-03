@@ -18,6 +18,16 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import {
+    Pagination,
+    PaginationContent,
+    PaginationEllipsis,
+    PaginationFirst,
+    PaginationItem,
+    PaginationLast,
+    PaginationNext,
+    PaginationPrevious,
+} from '@/components/ui/pagination';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/vue3';
@@ -138,6 +148,57 @@ const truncateText = (text: string | null, length: number = 50) => {
     if (!text) return '-';
     return text.length > length ? text.substring(0, length) + '...' : text;
 };
+
+const handlePageChange = (page: number) => {
+    router.get(
+        '/stock-management',
+        {
+            page,
+            start_date: startDateFilter.value || undefined,
+            end_date: endDateFilter.value || undefined,
+            product_id: productFilter.value || undefined,
+            user_id: userFilter.value || undefined,
+            type: typeFilter.value || undefined,
+        },
+        { preserveState: true, preserveScroll: true },
+    );
+};
+
+const paginationPages = computed(() => {
+    const pages: (number | 'ellipsis')[] = [];
+    const currentPage = props.stockHistories.current_page;
+    const lastPage = props.stockHistories.last_page;
+    const delta = 2; // Number of pages to show on each side of current page
+
+    // Always show first page
+    pages.push(1);
+
+    // Calculate range around current page
+    const rangeStart = Math.max(2, currentPage - delta);
+    const rangeEnd = Math.min(lastPage - 1, currentPage + delta);
+
+    // Add ellipsis before range if needed
+    if (rangeStart > 2) {
+        pages.push('ellipsis');
+    }
+
+    // Add pages in range
+    for (let i = rangeStart; i <= rangeEnd; i++) {
+        pages.push(i);
+    }
+
+    // Add ellipsis after range if needed
+    if (rangeEnd < lastPage - 1) {
+        pages.push('ellipsis');
+    }
+
+    // Always show last page if there's more than one page
+    if (lastPage > 1) {
+        pages.push(lastPage);
+    }
+
+    return pages;
+});
 </script>
 
 <template>
@@ -374,18 +435,82 @@ const truncateText = (text: string | null, length: number = 50) => {
                 </Table>
             </div>
 
-            <!-- Pagination Info -->
+            <!-- Pagination -->
             <div
-                class="flex items-center justify-between text-sm text-muted-foreground"
+                v-if="props.stockHistories.last_page > 1"
+                class="flex items-center justify-between px-2"
             >
-                <div>
-                    Showing {{ props.stockHistories.data.length }} of
-                    {{ props.stockHistories.total }} records
+                <div class="text-sm text-muted-foreground">
+                    Showing
+                    {{
+                        (props.stockHistories.current_page - 1) *
+                            props.stockHistories.per_page +
+                        1
+                    }}
+                    to
+                    {{
+                        Math.min(
+                            props.stockHistories.current_page *
+                                props.stockHistories.per_page,
+                            props.stockHistories.total,
+                        )
+                    }}
+                    of {{ props.stockHistories.total }} results
                 </div>
-                <div v-if="props.stockHistories.last_page > 1">
-                    Page {{ props.stockHistories.current_page }} of
-                    {{ props.stockHistories.last_page }}
-                </div>
+
+                <Pagination
+                    :total="props.stockHistories.total"
+                    :items-per-page="props.stockHistories.per_page"
+                    :default-page="props.stockHistories.current_page"
+                    :sibling-count="1"
+                    show-edges
+                >
+                    <PaginationContent>
+                        <PaginationFirst
+                            :disabled="props.stockHistories.current_page === 1"
+                            @click="handlePageChange(1)"
+                        />
+                        <PaginationPrevious
+                            :disabled="props.stockHistories.current_page === 1"
+                            @click="
+                                handlePageChange(
+                                    props.stockHistories.current_page - 1,
+                                )
+                            "
+                        />
+
+                        <template v-for="(page, index) in paginationPages" :key="index">
+                            <PaginationEllipsis v-if="page === 'ellipsis'" :index="index" />
+                            <PaginationItem
+                                v-else
+                                :value="page"
+                                :is-active="page === props.stockHistories.current_page"
+                                @click="handlePageChange(page)"
+                            >
+                                {{ page }}
+                            </PaginationItem>
+                        </template>
+
+                        <PaginationNext
+                            :disabled="
+                                props.stockHistories.current_page ===
+                                props.stockHistories.last_page
+                            "
+                            @click="
+                                handlePageChange(
+                                    props.stockHistories.current_page + 1,
+                                )
+                            "
+                        />
+                        <PaginationLast
+                            :disabled="
+                                props.stockHistories.current_page ===
+                                props.stockHistories.last_page
+                            "
+                            @click="handlePageChange(props.stockHistories.last_page)"
+                        />
+                    </PaginationContent>
+                </Pagination>
             </div>
         </div>
     </AppLayout>

@@ -35,7 +35,8 @@ class UserManagementViewController extends Controller
 			});
 		}
 
-		$users = $query->latest()->paginate(10);
+		$perPage = $request->get('per_page', 10);
+		$users = $query->latest()->paginate($perPage)->withQueryString();
 
 		return Inertia::render('user-management/Index', [
 			'users' => $users,
