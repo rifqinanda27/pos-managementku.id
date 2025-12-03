@@ -4,6 +4,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
+    Pagination,
+    PaginationContent,
+    PaginationEllipsis,
+    PaginationFirst,
+    PaginationItem,
+    PaginationLast,
+    PaginationNext,
+    PaginationPrevious,
+} from '@/components/ui/pagination';
+import {
     Select,
     SelectContent,
     SelectItem,
@@ -149,6 +159,51 @@ const getItemsCount = (transaction: Transaction) => {
         0,
     );
 };
+
+const handlePageChange = (page: number) => {
+    router.get(
+        '/reporting',
+        {
+            page,
+            search: searchQuery.value || undefined,
+            start_date: startDateFilter.value || undefined,
+            end_date: endDateFilter.value || undefined,
+            user_id: userFilter.value || undefined,
+            product_id: productFilter.value || undefined,
+        },
+        { preserveState: true, preserveScroll: true },
+    );
+};
+
+const paginationPages = computed(() => {
+    const pages: (number | 'ellipsis')[] = [];
+    const currentPage = props.transactions.current_page;
+    const lastPage = props.transactions.last_page;
+    const delta = 2;
+
+    pages.push(1);
+
+    const rangeStart = Math.max(2, currentPage - delta);
+    const rangeEnd = Math.min(lastPage - 1, currentPage + delta);
+
+    if (rangeStart > 2) {
+        pages.push('ellipsis');
+    }
+
+    for (let i = rangeStart; i <= rangeEnd; i++) {
+        pages.push(i);
+    }
+
+    if (rangeEnd < lastPage - 1) {
+        pages.push('ellipsis');
+    }
+
+    if (lastPage > 1) {
+        pages.push(lastPage);
+    }
+
+    return pages;
+});
 </script>
 
 <template>
@@ -369,44 +424,89 @@ const getItemsCount = (transaction: Transaction) => {
             <!-- Pagination -->
             <div
                 v-if="props.transactions.last_page > 1"
-                class="flex items-center justify-between rounded-lg border bg-card p-4 shadow-sm"
+                class="flex items-center justify-between px-2"
             >
                 <div class="text-sm text-muted-foreground">
                     Showing
-                    <strong>{{ props.transactions.data.length }}</strong>
-                    of
-                    <strong>{{ props.transactions.total }}</strong>
-                    transactions
+                    {{
+                        (props.transactions.current_page - 1) *
+                            props.transactions.per_page +
+                        1
+                    }}
+                    to
+                    {{
+                        Math.min(
+                            props.transactions.current_page *
+                                props.transactions.per_page,
+                            props.transactions.total,
+                        )
+                    }}
+                    of {{ props.transactions.total }} transactions
                 </div>
-                <div class="flex gap-2">
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        :disabled="props.transactions.current_page === 1"
-                        @click="
-                            router.get(
-                                `/reporting?page=${props.transactions.current_page - 1}`,
-                            )
-                        "
-                    >
-                        Previous
-                    </Button>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        :disabled="
-                            props.transactions.current_page ===
-                            props.transactions.last_page
-                        "
-                        @click="
-                            router.get(
-                                `/reporting?page=${props.transactions.current_page + 1}`,
-                            )
-                        "
-                    >
-                        Next
-                    </Button>
-                </div>
+
+                <Pagination
+                    :total="props.transactions.total"
+                    :items-per-page="props.transactions.per_page"
+                    :default-page="props.transactions.current_page"
+                    :sibling-count="1"
+                    show-edges
+                >
+                    <PaginationContent>
+                        <PaginationFirst
+                            :disabled="props.transactions.current_page === 1"
+                            @click="handlePageChange(1)"
+                        />
+                        <PaginationPrevious
+                            :disabled="props.transactions.current_page === 1"
+                            @click="
+                                handlePageChange(
+                                    props.transactions.current_page - 1,
+                                )
+                            "
+                        />
+
+                        <template
+                            v-for="(page, index) in paginationPages"
+                            :key="index"
+                        >
+                            <PaginationEllipsis
+                                v-if="page === 'ellipsis'"
+                                :index="index"
+                            />
+                            <PaginationItem
+                                v-else
+                                :value="page"
+                                :is-active="
+                                    page === props.transactions.current_page
+                                "
+                                @click="handlePageChange(page)"
+                            >
+                                {{ page }}
+                            </PaginationItem>
+                        </template>
+
+                        <PaginationNext
+                            :disabled="
+                                props.transactions.current_page ===
+                                props.transactions.last_page
+                            "
+                            @click="
+                                handlePageChange(
+                                    props.transactions.current_page + 1,
+                                )
+                            "
+                        />
+                        <PaginationLast
+                            :disabled="
+                                props.transactions.current_page ===
+                                props.transactions.last_page
+                            "
+                            @click="
+                                handlePageChange(props.transactions.last_page)
+                            "
+                        />
+                    </PaginationContent>
+                </Pagination>
             </div>
         </div>
     </AppLayout>

@@ -26,7 +26,8 @@ class ProductManagementViewController extends Controller
 			});
 		}
 
-		$products = $query->latest()->paginate(10);
+		$perPage = $request->get('per_page', 10);
+		$products = $query->latest()->paginate($perPage)->withQueryString();
 
 		return Inertia::render('product-management/Index', [
 			'products' => $products,
