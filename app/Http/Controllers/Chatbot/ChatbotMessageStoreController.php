@@ -119,10 +119,10 @@ class ChatbotMessageStoreController extends Controller
         // A. TAMBAH PRODUK — BOT MINTA KONFIRMASI
         // ============================================================
         if (
-			preg_match('/tambah.*produk/i', $question) ||
-			preg_match('/add.*product/i', $question) ||
-			preg_match('/create.*product/i', $question)
-		) {
+            preg_match('/tambah.*produk/i', $question) ||
+            preg_match('/add.*product/i', $question) ||
+            preg_match('/create.*product/i', $question)
+        ) {
 
             preg_match('/(?:nama|name)\s+([a-zA-Z0-9 ]+?)(?=\s+(harga|price|stok|stock|deskripsi|description)|$)/i', $question, $name);
             preg_match('/(?:harga|price)\s+([0-9]+)/i', $question, $price);
@@ -155,9 +155,9 @@ class ChatbotMessageStoreController extends Controller
         // B. UPDATE / RESTOCK PRODUK — MINTA PILIHAN + KONFIRMASI
         // ============================================================
         if (
-			preg_match('/(restok|restock).*produk/i', $question) ||
-			preg_match('/(restock|update|increase).*stock/i', $question)
-		) {
+            preg_match('/(restok|restock).*produk/i', $question) ||
+            preg_match('/(restock|update|increase).*stock/i', $question)
+        ) {
             // Ambil jumlah stok
             preg_match('/(?:stok|stock)\s+(\d+)/i', $question, $stokMatches);
             $amount = $stokMatches[1] ?? null;
@@ -168,12 +168,12 @@ class ChatbotMessageStoreController extends Controller
 
             // Ambil nama produk (hapus angka & kata restok/restock)
             $productName = preg_replace('/[0-9]+/', '', $question);
-			$productName = str_ireplace(
-				['restok produk', 'restock product', 'update stock', 'increase stock'],
-				'',
-				$productName
-			);
-			$productName = trim($productName);
+            $productName = str_ireplace(
+                ['restok produk', 'restock product', 'update stock', 'increase stock'],
+                '',
+                $productName
+            );
+            $productName = trim($productName);
 
             // Cari kandidat produk
             $candidates = $this->findProductCandidates($productName, 5);
@@ -204,12 +204,12 @@ class ChatbotMessageStoreController extends Controller
 
             // > 1 kandidat → minta user pilih nomor
             $listText = collect($candidates)->map(function ($c, $idx) {
-				$p = $c['product'];
-				$no = $idx + 1;
-				return "[{$no}] {$p->name}" .
-					(isset($p->price) ? " — Harga: {$p->price}" : "") .
-					(isset($p->current_stock) ? " — Stok: {$p->current_stock}" : "");
-			})->implode("\n");
+                $p = $c['product'];
+                $no = $idx + 1;
+                return "[{$no}] {$p->name}" .
+                    (isset($p->price) ? " — Harga: {$p->price}" : "") .
+                    (isset($p->current_stock) ? " — Stok: {$p->current_stock}" : "");
+            })->implode("\n");
 
 
             $topic->update([
@@ -304,7 +304,7 @@ class ChatbotMessageStoreController extends Controller
             ->orderBy('created_at')
             ->limit(15)
             ->get(['role', 'content'])
-            ->map(fn ($m) => strtoupper($m->role) . ": " . $m->content)
+            ->map(fn($m) => strtoupper($m->role) . ": " . $m->content)
             ->implode("\n\n");
 
         $prompt = $history . "\n\nUSER: " . $userText;
@@ -359,7 +359,7 @@ class ChatbotMessageStoreController extends Controller
         // Normalisasi input → ambil kata-kata penting
         $normalized = preg_replace('/[^a-z0-9 ]/i', ' ', $input);
         $words      = array_filter(explode(' ', $normalized));
-        $words      = array_filter($words, fn ($w) => strlen($w) >= 3);
+        $words      = array_filter($words, fn($w) => strlen($w) >= 3);
 
         if (empty($words)) {
             return [];

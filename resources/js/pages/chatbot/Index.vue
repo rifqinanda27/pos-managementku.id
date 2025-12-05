@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/layouts/AppLayout.vue';
 import type { BreadcrumbItem } from '@/types';
-import { Head, router } from '@inertiajs/vue3';
+import { Head, router, usePage } from '@inertiajs/vue3';
 import {
     Check,
     Copy,
@@ -60,7 +60,8 @@ const autoResize = () => {
     el.style.height = 'auto';
     const next = Math.min(el.scrollHeight, maxTextareaHeight);
     el.style.height = `${next}px`;
-    el.style.overflowY = el.scrollHeight > maxTextareaHeight ? 'auto' : 'hidden';
+    el.style.overflowY =
+        el.scrollHeight > maxTextareaHeight ? 'auto' : 'hidden';
 };
 
 const scrollToBottom = () => {
@@ -99,19 +100,10 @@ const sendMessage = async () => {
     // Ensure we read the most up-to-date value: prefer `messageInput`, fallback to DOM textarea value
     let domVal = '';
     const comp = textareaRef.value as any;
-    const el: HTMLTextAreaElement | null = comp? (comp.$el ?? comp) : null;
+    const el: HTMLTextAreaElement | null = comp ? (comp.$el ?? comp) : null;
     if (el && typeof el.value === 'string') domVal = el.value;
     const content = (messageInput.value || domVal || '').toString();
     if (!content.trim()) return;
-
-    const url = `/chatbot/topics/${props.selectedTopic.id}/messages`;
-    const csrf = document
-        .querySelector('meta[name="csrf-token"]')
-        ?.getAttribute('content');
-
-    const payload = { content };
-
-    console.debug('sendMessage -> content', content);
 
     // Optimistic UI: push user message and assistant placeholder immediately
     const tempUserId = Date.now();
@@ -143,58 +135,89 @@ const sendMessage = async () => {
     scrollToBottom();
 
     try {
-        console.debug('POST', url, payload);
-        const res = await fetch(url, {
+        // Get CSRF token from Inertia's shared props (best practice)
+        const page = usePage();
+        const csrfToken = (page.props as any).csrf_token;
+
+        if (!csrfToken) {
+            console.error('CSRF token not found in page props');
+            throw new Error('CSRF token not available');
+        }
+
+        const url = `/chatbot/topics/${props.selectedTopic.id}/messages`;
+
+        const response = await fetch(url, {
             method: 'POST',
-            credentials: 'same-origin',
+            credentials: 'include',
             headers: {
-                Accept: 'application/json',
                 'Content-Type': 'application/json',
                 'X-Requested-With': 'XMLHttpRequest',
-                ...(csrf ? { 'X-CSRF-TOKEN': csrf } : {}),
+                'X-CSRF-TOKEN': csrfToken,
+                Accept: 'application/json',
             },
-            body: JSON.stringify(payload),
+            body: JSON.stringify({ content }),
         });
 
-        if (!res.ok) {
-            // Non-OK (status 4xx/5xx). Log response body for diagnosis and show local error message.
-            const text = await res.text().catch(() => '[unable to read body]');
-            console.error('AJAX non-ok response', res.status, text);
-            // remove assistant placeholder
-            messages.value = messages.value.filter((m) => m.id !== tempAssistantId);
-            // show local assistant error message
+        if (!response.ok) {
+            let errorMessage =
+                'An error occurred while processing your message.';
+
+            try {
+                // Try to parse JSON error response
+                const contentType = response.headers.get('content-type');
+                if (contentType?.includes('application/json')) {
+                    const errorData = await response.json();
+                    errorMessage =
+                        errorData.message ||
+                        (Object.values(errorData).flat()[0] as string) ||
+                        errorMessage;
+                } else {
+                    // For non-JSON responses (like 419 CSRF errors that return HTML)
+                    if (response.status === 419) {
+                        errorMessage =
+                            'Session expired. Please refresh the page and try again.';
+                    } else if (response.status === 422) {
+                        errorMessage =
+                            'Invalid input. Please check your message.';
+                    } else if (response.status >= 500) {
+                        errorMessage = 'Server error. Please try again later.';
+                    }
+                }
+            } catch (parseError) {
+                console.error('Error parsing response:', parseError);
+                // Keep the generic error message
+            }
+
+            messages.value = messages.value.filter(
+                (m) => m.id !== tempAssistantId,
+            );
             messages.value.push({
                 id: Date.now() + 3,
                 role: 'assistant',
-                content: 'Terjadi kesalahan saat menghubungi server. Coba lagi.',
+                content: errorMessage,
                 created_at: new Date().toISOString(),
             });
+            nextTick(scrollToBottom);
             return;
         }
 
-        const contentType = res.headers.get('content-type') || '';
-        if (!contentType.includes('application/json')) {
-            const text = await res.text().catch(() => '[unable to read body]');
-            console.error('AJAX non-json response', text);
-            messages.value = messages.value.filter((m) => m.id !== tempAssistantId);
-            messages.value.push({
-                id: Date.now() + 4,
-                role: 'assistant',
-                content: 'Server mengembalikan respons yang tidak terduga. Coba lagi.',
-                created_at: new Date().toISOString(),
-            });
-            return;
+        let data;
+        try {
+            data = await response.json();
+        } catch (parseError) {
+            console.error('Failed to parse response JSON:', parseError);
+            throw new Error('Invalid response format from server');
         }
 
-        const data = await res.json();
-
-        // Build normalized Message objects from server response to avoid rendering raw JSON
+        // Build normalized Message objects from server response
         const serverUser = data.user_message
             ? ({
                   id: data.user_message.id,
                   role: data.user_message.role ?? 'user',
-                  content: data.user_message.content ?? String(data.user_message),
-                  created_at: data.user_message.created_at ?? new Date().toISOString(),
+                  content:
+                      data.user_message.content ?? String(data.user_message),
+                  created_at:
+                      data.user_message.created_at ?? new Date().toISOString(),
               } as Message)
             : null;
 
@@ -202,9 +225,12 @@ const sendMessage = async () => {
             ? ({
                   id: data.assistant_message.id,
                   role: data.assistant_message.role ?? 'assistant',
-                  content: data.assistant_message.content ?? String(data.assistant_message),
+                  content:
+                      data.assistant_message.content ??
+                      String(data.assistant_message),
                   created_at:
-                      data.assistant_message.created_at ?? new Date().toISOString(),
+                      data.assistant_message.created_at ??
+                      new Date().toISOString(),
               } as Message)
             : null;
 
@@ -224,14 +250,43 @@ const sendMessage = async () => {
             if (aidx !== -1) messages.value.splice(aidx, 1);
         }
 
-        await nextTick();
-        scrollToBottom();
+        nextTick(scrollToBottom);
     } catch (e) {
-        // On error, remove placeholder and fallback to Inertia submission
-        console.error('sendMessage error', e);
+        console.error('sendMessage error:', {
+            message: e instanceof Error ? e.message : String(e),
+            stack: e instanceof Error ? e.stack : undefined,
+        });
+
         messages.value = messages.value.filter((m) => m.id !== tempAssistantId);
-        console.error("AJAX error", e);
-        return;
+
+        let errorMessage = 'An error occurred. Please try again.';
+
+        if (e instanceof TypeError) {
+            // Network error or CORS issue
+            if (e.message.includes('fetch')) {
+                errorMessage = 'Network error. Please check your connection.';
+            } else {
+                errorMessage = 'Failed to send message. Please try again.';
+            }
+        } else if (e instanceof Error) {
+            if (e.message.includes('CSRF')) {
+                errorMessage =
+                    'Security token missing. Please refresh the page.';
+            } else if (e.message.includes('Invalid response')) {
+                errorMessage =
+                    'Received invalid response from server. Please try again.';
+            } else {
+                errorMessage = e.message;
+            }
+        }
+
+        messages.value.push({
+            id: Date.now() + 4,
+            role: 'assistant',
+            content: errorMessage,
+            created_at: new Date().toISOString(),
+        });
+        nextTick(scrollToBottom);
     }
 };
 
@@ -398,7 +453,7 @@ watch(
                     class="flex-1 space-y-6 overflow-y-auto p-6"
                 >
                     <div
-                                        v-if="messages.length === 0"
+                        v-if="messages.length === 0"
                         class="flex h-full flex-col items-center justify-center gap-4 text-center"
                     >
                         <div class="rounded-full bg-primary/10 p-6">
@@ -507,13 +562,17 @@ watch(
                                                     d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
                                                 />
                                             </svg>
-                                            <span class="text-sm text-muted-foreground">
+                                            <span
+                                                class="text-sm text-muted-foreground"
+                                            >
                                                 Sedang mengetik...
                                             </span>
                                         </div>
                                     </template>
                                     <template v-else>
-                                        <MarkdownRenderer :content="m.content" />
+                                        <MarkdownRenderer
+                                            :content="m.content"
+                                        />
                                     </template>
                                 </div>
                             </div>

@@ -25,6 +25,7 @@ use App\Http\Controllers\Chatbot\ChatbotTopicStoreController;
 use App\Http\Controllers\Chatbot\ChatbotTopicDeleteController;
 use App\Http\Controllers\Chatbot\ChatbotTopicClearController;
 use App\Http\Controllers\Chatbot\ChatbotMessageStoreController;
+use App\Http\Controllers\Chatbot\ChatbotToolController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
@@ -90,14 +91,17 @@ Route::prefix('reporting')->name('reporting.')->middleware(['auth', 'verified', 
 // Chatbot - accessible by all authenticated and verified users
 Route::prefix('chatbot')->name('chatbot.')->middleware(['auth', 'verified'])->group(function () {
     Route::get('/', [ChatbotViewController::class, 'index'])->name('index');
+
     // Topics
     Route::post('/topics', ChatbotTopicStoreController::class)->name('topics.store');
     Route::delete('/topics/{topic}', ChatbotTopicDeleteController::class)->name('topics.destroy');
     Route::delete('/topics/{topic}/clear', ChatbotTopicClearController::class)->name('topics.clear');
+
     // Messages
     Route::post('/topics/{topic}/messages', ChatbotMessageStoreController::class)->name('messages.store');
+
     // Tool endpoint for chatbot to request structured DB data (whitelisted)
-    Route::post('/tool/db', [\App\Http\Controllers\Chatbot\ChatbotToolController::class, '__invoke'])->name('tool.db');
+    Route::post('/tool/db', ChatbotToolController::class)->name('tool.db');
 });
 
 require __DIR__ . '/settings.php';
