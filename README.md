@@ -65,6 +65,24 @@ A comprehensive Point of Sales management system built with Laravel 12, Inertia.
 - Automatic stock validation (prevent negative stock)
 - Transaction-based updates for data integrity
 
+### Reporting
+- Transaction list and detail views (per-transaction drill-down)
+- Role-gated for Super Admin & Admin
+- Useful for auditing sales created from POS checkout
+
+### Chatbot (AI Assistant)
+- Authenticated access for all verified users
+- Topic-based conversations (create, delete, clear topic)
+- Message endpoint per topic
+- Tool endpoint to fetch structured DB data for the bot (whitelisted)
+- Uses Google Gemini (configure `services.gemini.key` and `services.gemini.model` in `.env`)
+
+### Settings
+- Profile update (name, username, avatar if supported)
+- Password change with throttling
+- Two-factor authentication support
+- Appearance (theme) page stub
+
 ### Dashboard
 - Admin/Super Admin dashboard (placeholder)
 - POS Terminal for cashiers (placeholder)
@@ -82,39 +100,27 @@ A comprehensive Point of Sales management system built with Laravel 12, Inertia.
 
 ```
 app/
+├── Services/
+│   └── Chatbot/                      # Chatbot service layer (intent parsing, product matching, confirmation, AI)
 ├── Console/Commands/
 │   └── CreateSuperAdmin.php          # CLI command to create super admin
 ├── Http/
 │   ├── Controllers/
-│   │   ├── UserManagement/           # User management controllers
-│   │   │   ├── UserManagementViewController.php
-│   │   │   ├── UserManagementStoreController.php
-│   │   │   ├── UserManagementUpdateController.php
-│   │   │   └── UserManagementDeleteController.php
-│   │   ├── ProductManagement/        # Product management controllers
-│   │   │   ├── ProductManagementViewController.php
-│   │   │   ├── ProductManagementStoreController.php
-│   │   │   ├── ProductManagementUpdateController.php
-│   │   │   └── ProductManagementDeleteController.php
-│   │   ├── StockManagement/          # Stock management controllers
-│   │   │   ├── StockManagementViewController.php
-│   │   │   └── StockManagementUpdateStockController.php
-│   │   └── Pos/                      # POS and Cart controllers
-│   │       ├── PosViewController.php
-│   │       ├── PosAddToCartController.php
-│   │       ├── PosCheckoutSingleController.php
-│   │       └── Cart/                 # Cart module (nested under Pos)
-│   │           ├── CartViewController.php
-│   │           ├── CartUpdateController.php
-│   │           ├── CartDeleteController.php
-│   │           ├── CartClearController.php
-│   │           └── CartCheckoutController.php
+│   │   ├── UserManagement/
+│   │   ├── ProductManagement/
+│   │   ├── StockManagement/
+│   │   ├── Reporting/                # Reporting controllers
+│   │   ├── Settings/                 # Profile/password/2FA/appearance
+│   │   ├── Pos/                      # POS and Cart controllers
+│   │   │   └── Cart/
+│   │   └── Chatbot/                  # Chatbot controllers (topics, messages, tool)
 │   ├── Middleware/
 │   │   └── CheckRole.php             # Role-based authorization middleware
 │   ├── Requests/
-│   │   ├── UserManagement/           # User form validation
-│   │   ├── ProductManagement/        # Product form validation
-│   │   └── StockManagement/          # Stock form validation
+│   │   ├── UserManagement/
+│   │   ├── ProductManagement/
+│   │   ├── StockManagement/
+│   │   └── (others as added per module)
 │   └── Responses/
 │       └── LoginResponse.php         # Custom login response
 ├── Models/
@@ -133,20 +139,16 @@ database/
 └── database_structure.md             # Complete database documentation
 
 resources/js/pages/
-├── auth/                             # Authentication pages
-├── user-management/                  # User management pages
-│   ├── Index.vue
-│   ├── Create.vue
-│   └── Edit.vue
-├── product-management/               # Product management pages
-│   ├── Index.vue
-│   ├── Create.vue
-│   └── Edit.vue
-├── stock-management/                 # Stock management pages
-│   ├── Index.vue
-│   └── UpdateStock.vue
-├── Dashboard.vue                     # Admin dashboard
-└── Pos.vue                          # Cashier POS terminal
+├── auth/
+├── user-management/
+├── product-management/
+├── stock-management/
+├── reporting/
+├── chatbot/
+├── settings/
+├── pos/
+├── Dashboard.vue
+└── Welcome.vue
 
 routes/
 └── web.php                          # All application routes with proper grouping
@@ -164,8 +166,8 @@ routes/
 
 1. **Clone the repository**
    ```bash
-   git clone <repository-url>
-   cd hackathon-pos-managementku.id
+    git clone <repository-url>
+    cd pos-managementku.id
    ```
 
 2. **Install PHP dependencies**
@@ -192,6 +194,10 @@ routes/
    DB_DATABASE=pos_management
    DB_USERNAME=your_username
    DB_PASSWORD=your_password
+
+    # Gemini (Chatbot)
+    GEMINI_API_KEY=your_gemini_api_key
+    GEMINI_MODEL=gemini-1.5-flash
    ```
 
 5. **Run Migrations**
@@ -199,7 +205,12 @@ routes/
    php artisan migrate
    ```
 
-6. **Create Super Admin**
+6. **Link Storage (for product images and other public assets)**
+    ```bash
+    php artisan storage:link
+    ```
+
+7. **Create Super Admin**
    ```bash
    php artisan create:super-admin
    ```
@@ -210,7 +221,7 @@ routes/
    - Password
    - Password Confirmation
 
-7. **Build Frontend Assets**
+8. **Build Frontend Assets**
    
    For development:
    ```bash
@@ -222,7 +233,7 @@ routes/
    npm run build
    ```
 
-8. **Start the Development Server**
+9. **Start the Development Server**
    ```bash
    php artisan serve
    ```
@@ -245,7 +256,7 @@ php artisan create:super-admin
 2. Enter your credentials
 3. You'll be redirected based on your role:
    - Super Admin/Admin → `/dashboard`
-   - Cashier → `/pos`
+    - Cashier → `/pos-terminal`
 
 ### User Management
 
@@ -293,6 +304,50 @@ php artisan create:super-admin
 - Filter by product, admin, type
 - Notes for stock changes
 - Complete audit trail
+
+### Reporting
+
+**Access**: Super Admin, Admin
+
+**Routes**:
+- List: `/reporting`
+- Detail: `/reporting/{transaction}`
+
+**Features**:
+- View transactions created from POS checkouts
+- Per-transaction drill-down
+- Role-gated for admins
+
+### Chatbot (AI Assistant)
+
+**Access**: Authenticated & verified users
+
+**Routes**:
+- Chat home: `/chatbot`
+- Create topic: `POST /chatbot/topics`
+- Delete topic: `DELETE /chatbot/topics/{topic}`
+- Clear topic messages: `DELETE /chatbot/topics/{topic}/clear`
+- Send message: `POST /chatbot/topics/{topic}/messages`
+- Tool (DB data for bot): `POST /chatbot/tool/db`
+
+**Features**:
+- Topic-based conversations
+- Gemini-backed responses (configure `GEMINI_API_KEY`/`GEMINI_MODEL`)
+- Bot can request structured DB data via the tool endpoint (whitelisted)
+
+### Settings
+
+**Access**: Authenticated users
+
+**Routes**:
+- Profile: `/settings/profile`
+- Password: `/settings/password`
+- Appearance: `/settings/appearance`
+
+**Features**:
+- Update profile & password (throttled)
+- Appearance stub page
+- Two-factor authentication support via Fortify
 
 ## Database Schema
 
@@ -399,16 +454,6 @@ Run the test suite:
 ```bash
 php artisan test
 ```
-
-## Future Enhancements
-
-- Complete POS terminal implementation
-- Sales transaction management
-- Receipt printing
-- Inventory reports
-- Sales analytics
-- Low stock alerts
-- Barcode scanning support
 
 ## Security
 
