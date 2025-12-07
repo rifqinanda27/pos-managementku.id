@@ -109,7 +109,7 @@ app/
 │   │   ├── ProductManagement/
 │   │   ├── StockManagement/
 │   │   ├── Reporting/                # Reporting controllers
-│   │   ├── Settings/                 # Profile/password/2FA/appearance
+│   │   ├── Settings/                 # Profile/password/appearance
 │   │   ├── Pos/                      # POS and Cart controllers
 │   │   │   └── Cart/
 │   │   ├── Chatbot/                  # Chatbot controllers (topics, messages, tool)
