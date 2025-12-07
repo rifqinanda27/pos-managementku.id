@@ -10,28 +10,38 @@ use Illuminate\Support\Facades\DB;
 
 class PosAddToCartController extends Controller
 {
-    /**
-     * Add item to cart for the current authenticated user.
-     */
-    public function __invoke(Request $request)
-    {
-        $data = $request->validate([
-            'product_id' => 'required|exists:products,id',
-            'quantity' => 'required|integer|min:1',
-        ]);
+	/**
+	 * Add item to cart for the current authenticated user.
+	 */
+	public function __invoke(Request $request)
+	{
+		$data = $request->validate([
+			'product_id' => 'required|exists:products,id',
+			'quantity' => 'required|integer|min:1',
+		]);
 
-        $user = $request->user();
+		$user = $request->user();
+		$product = Product::findOrFail($data['product_id']);
 
-        $product = Product::findOrFail($data['product_id']);
+		// Get or create cart item
+		$cartItem = CartItem::firstOrNew([
+			'user_id' => $user->id,
+			'product_id' => $product->id,
+		]);
 
-        CartItem::updateOrCreate(
-            ['user_id' => $user->id, 'product_id' => $product->id],
-            ['quantity' => DB::raw('GREATEST(quantity + ' . ((int)$data['quantity']) . ', 1)'), 'price' => $product->price]
-        );
+		// If item exists, add to quantity; if new, set to desired quantity
+		$newQuantity = $cartItem->exists ? $cartItem->quantity + $data['quantity'] : $data['quantity'];
 
-        return redirect()->back()->with('alert', [
-            'type' => 'success',
-            'message' => 'Product added to cart.',
-        ]);
-    }
+		// Ensure quantity is at least 1
+		$newQuantity = max($newQuantity, 1);
+
+		$cartItem->quantity = $newQuantity;
+		$cartItem->price = $product->price;
+		$cartItem->save();
+
+		return redirect()->back()->with('alert', [
+			'type' => 'success',
+			'message' => 'Product added to cart.',
+		]);
+	}
 }

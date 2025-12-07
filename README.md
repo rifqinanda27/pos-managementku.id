@@ -13,7 +13,6 @@ A comprehensive Point of Sales management system built with Laravel 12, Inertia.
 - **Username-based authentication** (no email required)
 - Custom login redirect based on user role
 - Secure authentication using Laravel Fortify
-- Two-factor authentication support
 
 ### User Management
 - Create, read, update, and delete users
@@ -80,7 +79,6 @@ A comprehensive Point of Sales management system built with Laravel 12, Inertia.
 ### Settings
 - Profile update (name, username, avatar if supported)
 - Password change with throttling
-- Two-factor authentication support
 - Appearance (theme) page stub
 
 ### Dashboard
@@ -94,14 +92,15 @@ A comprehensive Point of Sales management system built with Laravel 12, Inertia.
 - **Routing**: Inertia.js
 - **Styling**: Tailwind CSS
 - **UI Components**: shadcn-vue
-- **Database**: PostgreSQL/MySQL with partial indexes support
+- **Database**: PostgreSQL with partial indexes support
 
 ## Project Structure
 
 ```
 app/
 ├── Services/
-│   └── Chatbot/                      # Chatbot service layer (intent parsing, product matching, confirmation, AI)
+│   ├── Chatbot/                      # Chatbot service layer (intent parsing, product matching, confirmation, AI)
+│   └── DBToolService.php             # Database tool service for chatbot
 ├── Console/Commands/
 │   └── CreateSuperAdmin.php          # CLI command to create super admin
 ├── Http/
@@ -113,22 +112,30 @@ app/
 │   │   ├── Settings/                 # Profile/password/2FA/appearance
 │   │   ├── Pos/                      # POS and Cart controllers
 │   │   │   └── Cart/
-│   │   └── Chatbot/                  # Chatbot controllers (topics, messages, tool)
+│   │   ├── Chatbot/                  # Chatbot controllers (topics, messages, tool)
+│   │   └── DashboardController.php   # Dashboard controller
 │   ├── Middleware/
 │   │   └── CheckRole.php             # Role-based authorization middleware
 │   ├── Requests/
 │   │   ├── UserManagement/
 │   │   ├── ProductManagement/
 │   │   ├── StockManagement/
-│   │   └── (others as added per module)
+│   │   ├── Chatbot/
+│   │   └── Settings/
 │   └── Responses/
-│       └── LoginResponse.php         # Custom login response
+│       ├── LoginResponse.php         # Custom login response (role-based redirect)
+│       └── LogoutResponse.php        # Custom logout response
 ├── Models/
 │   ├── User.php                      # User model with soft deletes
 │   ├── Product.php                   # Product model with auto SKU
-│   └── StockHistory.php              # Stock history model
+│   ├── StockHistory.php              # Stock history model
+│   ├── Transaction.php               # Transaction model
+│   ├── TransactionDetail.php         # Transaction detail model
+│   ├── CartItem.php                  # Cart item model (per-user cart)
+│   ├── ChatTopic.php                 # Chat topic model
+│   └── ChatMessage.php               # Chat message model
 └── Providers/
-    ├── AppServiceProvider.php        # Login response binding
+    ├── AppServiceProvider.php        # Login/logout response binding
     └── FortifyServiceProvider.php    # Custom authentication
 
 database/
@@ -148,10 +155,13 @@ resources/js/pages/
 ├── settings/
 ├── pos/
 ├── Dashboard.vue
-└── Welcome.vue
+├── Welcome.vue
+└── Setup.vue                        # Setup guide for new users
 
 routes/
-└── web.php                          # All application routes with proper grouping
+├── web.php                          # All application routes with proper grouping
+├── settings.php                     # Settings routes (profile, password, appearance)
+└── console.php                      # Console routes
 ```
 
 ## Installation
@@ -188,16 +198,16 @@ routes/
    
    Update `.env` with your database credentials:
    ```
-   DB_CONNECTION=pgsql  # or mysql
+   DB_CONNECTION=pgsql
    DB_HOST=127.0.0.1
-   DB_PORT=5432         # or 3306 for MySQL
+   DB_PORT=5432
    DB_DATABASE=pos_management
    DB_USERNAME=your_username
    DB_PASSWORD=your_password
 
     # Gemini (Chatbot)
     GEMINI_API_KEY=your_gemini_api_key
-    GEMINI_MODEL=gemini-1.5-flash
+    GEMINI_MODEL=gemini-2.5-flash
    ```
 
 5. **Run Migrations**
@@ -217,7 +227,7 @@ routes/
    
    Follow the prompts to enter:
    - Name
-   - Email
+   - Username
    - Password
    - Password Confirmation
 
@@ -307,7 +317,7 @@ php artisan create:super-admin
 
 ### Reporting
 
-**Access**: Super Admin, Admin
+**Access**: Super Admin, Admin, Cashier
 
 **Routes**:
 - List: `/reporting`
@@ -317,6 +327,7 @@ php artisan create:super-admin
 - View transactions created from POS checkouts
 - Per-transaction drill-down
 - Role-gated for admins
+- Auto filtered transaction for cahiser
 
 ### Chatbot (AI Assistant)
 
@@ -347,7 +358,6 @@ php artisan create:super-admin
 **Features**:
 - Update profile & password (throttled)
 - Appearance stub page
-- Two-factor authentication support via Fortify
 
 ## Database Schema
 

@@ -61,7 +61,7 @@ const navigationConfig = {
         title: 'Transaction Reports',
         href: '/reporting',
         icon: FileText,
-        roles: ['super-admin', 'admin'],
+        roles: ['super-admin', 'admin', 'cashier'],
     },
     chatbot: {
         title: 'Chatbot',

@@ -10,22 +10,28 @@ class CartUpdateController extends Controller
 {
     /**
      * Update the quantity of a cart item.
+     *
+     * Validates that quantity is at least 1 and enforces authorization.
      */
     public function __invoke(Request $request, $userId, CartItem $cartItem)
     {
+        // Authorization check
+        if ($cartItem->user_id != $userId) {
+            abort(403, 'Unauthorized to update this cart item.');
+        }
+
+        // Validate input
         $data = $request->validate([
             'quantity' => 'required|integer|min:1',
         ]);
 
-        if ($cartItem->user_id != $userId) {
-            abort(403);
-        }
-
-        $cartItem->update(['quantity' => $data['quantity']]);
+        // Update with validated quantity (ensure minimum 1)
+        $newQuantity = max((int)$data['quantity'], 1);
+        $cartItem->update(['quantity' => $newQuantity]);
 
         return redirect()->back()->with('alert', [
             'type' => 'success',
-            'message' => 'Cart updated.',
+            'message' => 'Cart item quantity updated.',
         ]);
     }
 }
